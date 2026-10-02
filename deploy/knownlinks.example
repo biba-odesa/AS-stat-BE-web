@@ -1,0 +1,3 @@
+# exporter IPv4  ifIndex  link_id  display name  RGB color  ignored legacy column
+192.0.2.10 1 example-transit "Example Transit" 66c2a5 unused
+192.0.2.10 2 example-peering "Example Peering" 8da0cb unused

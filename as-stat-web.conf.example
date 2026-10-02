@@ -1,0 +1,29 @@
+[server]
+# Defaults to loopback; use the VM internal address for manual access.
+host = 127.0.0.1
+port = 8000
+
+[victoriametrics]
+# Local transport always bypasses HTTP proxies.
+url = http://127.0.0.1:8428
+
+[links]
+# Relative paths are resolved against the web project root.
+knownlinks = /etc/as-stat-be-web/knownlinks
+
+[proxy]
+# Optional: uncomment when external RIPEstat access requires the proxy.
+# HTTP_PROXY = http://proxy.example.net:3128
+# HTTPS_PROXY = http://proxy.example.net:3128
+# NO_PROXY = localhost,127.0.0.1,::1
+
+[asn_metadata]
+http_timeout_seconds = 10
+
+[svg]
+cache_ttl_seconds = 1200
+
+[web_cache]
+path = data/web-cache
+ttl_seconds = 1200
+max_size_bytes = 134217728

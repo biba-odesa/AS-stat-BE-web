@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AS-Stats — View ASN</title>
+<link rel="stylesheet" href="/static/common.css">
+<style>
+* {box-sizing:border-box}
+body {font:15px system-ui; margin:0; padding:1rem}
+h1 {font-size:1.35rem; margin:0 0 .8rem}
+#asn-metadata {max-width:100%; overflow-wrap:anywhere}
+h2 {font-size:1.1rem; margin:0 0 .5rem}
+form {display:flex; flex-wrap:wrap; gap:.65rem; align-items:end}
+form label {display:grid; gap:.2rem} input,select,button {font:inherit; padding:.3rem}
+#asn {width:8rem} #period {font-size:.85rem; margin:.5rem 0; color:var(--muted)}
+#asn-links {display:grid; grid-template-columns:repeat(3,max-content); gap:.5rem; flex:0 0 auto; margin-left:auto; align-self:center; justify-items:start; text-align:left; font-size:.85rem}
+#asn-links[hidden] {display:none}
+#asn-links a {white-space:nowrap}
+#timezone {text-align:right; font-size:.8rem; color:var(--muted); margin-top:1rem}
+#status {white-space:pre-wrap}
+.workspace {display:grid; grid-template-columns:minmax(160px,10%) minmax(0,1fr); gap:1rem; align-items:start}
+.select-all {display:flex; align-items:center; gap:.4rem; margin-bottom:.7rem; font-weight:600}
+.link-list {display:flex; flex-direction:column; gap:.35rem; margin:0; padding:0; list-style:none}
+.link-list label {display:flex; align-items:center; gap:.4rem; overflow-wrap:anywhere}
+.link-list input {flex-shrink:0; margin:0}
+.swatch {display:inline-block; width:.75rem; height:.75rem; flex-shrink:0; border:1px solid var(--muted)}
+.graph {min-width:0} .chart {height:clamp(420px,70vh,900px); width:100%}
+@media (max-width:1100px) {#asn-links {flex-basis:100%; justify-content:end}}
+@media (max-width:640px) {.workspace {grid-template-columns:minmax(0,1fr)} .chart {height:420px}}
+</style>
+<nav class="site-nav" aria-label="Main navigation">
+<a href="/">Top ASN</a>
+<a href="/view-asn" aria-current="page">View ASN</a>
+<a href="/link-usage">Link Usage</a>
+</nav>
+<h1 id="asn-metadata" aria-live="polite" hidden></h1>
+<form id="form">
+<label>ASN <input id="asn" value="64496" required inputmode="numeric" pattern="[0-9]{1,10}" maxlength="10"></label>
+<label>IP family <select id="family"><option value="both">Both</option><option value="4">IPv4</option><option value="6">IPv6</option></select></label>
+<label>Start <input id="start" type="datetime-local" step="60" required></label>
+<label>End (exclusive) <input id="end" type="datetime-local" step="60" required></label>
+<button id="show" type="submit">SET</button>
+<nav id="asn-links" aria-label="ASN external resources" hidden></nav>
+</form>
+<p id="status" role="status"></p>
+<section id="result" hidden>
+<p id="period"></p>
+<div class="workspace">
+<aside aria-label="Select links"><label class="select-all"><input id="all-links" type="checkbox" disabled> All links</label><ul id="rows" class="link-list"></ul></aside>
+<div class="graph">
+<h2>Output ↑ / Input ↓</h2>
+<p id="empty-traffic" role="status"></p><div id="chart-traffic" class="chart" aria-label="Output up, Input down — traffic by link"></div>
+</div>
+</div>
+</section>
+<footer id="timezone"></footer>
+<script src="/static/vendor/echarts/echarts.min.js"></script>
+<script src="/static/asn-metadata.js"></script>
+<script src="/static/app.js"></script>
+</html>

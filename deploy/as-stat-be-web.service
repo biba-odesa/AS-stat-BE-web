@@ -1,0 +1,21 @@
+[Unit]
+Description=AS-stat-BE-web interface
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=asstat-web
+Group=asstat-web
+WorkingDirectory=/opt/as-stat-be-web
+ExecStart=/opt/as-stat-be-web/.venv/bin/python -m app
+Environment=PYTHONDONTWRITEBYTECODE=1
+Restart=on-failure
+RestartSec=5
+UMask=0027
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

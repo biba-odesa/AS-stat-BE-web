@@ -1,0 +1,31 @@
+# Include within nginx's http context. Operator manages access control and TLS.
+proxy_cache_path /var/cache/nginx/as-stat-be-web levels=1:2
+    keys_zone=as_stat_be_web_svg:16m max_size=1g inactive=40m use_temp_path=off;
+
+server {
+    # Local HTTP example only. Configure TLS and authentication/whitelist before exposure.
+    listen localhost:8080;
+    server_name example.net;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 60s;
+
+    location ~ ^/api/(asn|link-usage)/sparkline\.svg$ {
+        proxy_pass http://localhost:8000;
+        proxy_cache as_stat_be_web_svg;
+        proxy_cache_key "$scheme$host$request_uri";
+        proxy_cache_methods GET HEAD;
+        proxy_cache_valid 200 20m;
+        proxy_cache_lock on;
+        proxy_cache_lock_timeout 60s;
+        proxy_cache_lock_age 60s;
+        add_header X-Cache-Status $upstream_cache_status always;
+        # Honor upstream Cache-Control, ETag and no-store; do not ignore these headers.
+    }
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_cache off;
+    }
+}
