@@ -1,0 +1,79 @@
+:root {
+  color-scheme:dark;
+  --page-bg:#121a24;
+  --panel-bg:#18212d;
+  --field-bg:#202c3c;
+  --hover-bg:#293b52;
+  --active-bg:#304966;
+  --text:#d5deea;
+  --muted:#a2b0c2;
+  --border:#354459;
+  --grid:#2b394b;
+  --zero:#9aadc4;
+  --link:#8fbef2;
+  --focus:#9bc7f7;
+}
+* {box-sizing:border-box}
+body {font:15px system-ui; margin:0; padding:1rem; background:var(--page-bg); color:var(--text)}
+a {color:var(--link)}
+a:hover {color:var(--focus)}
+input,select,button {background:var(--field-bg); color:var(--text); border:1px solid var(--border); border-radius:.25rem}
+button {cursor:pointer}
+button:hover {background:var(--hover-bg)}
+:focus-visible {outline:2px solid var(--focus); outline-offset:2px}
+input[type="checkbox"] {accent-color:var(--link)}
+#ranking,.graph,.link-list,#link-legend {background:var(--panel-bg)}
+#ranking th {background:var(--field-bg); color:var(--text)}
+.site-nav {display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; padding:0 0 .6rem; margin:0 0 1rem; border-bottom:1px solid var(--border)}
+.site-nav a {display:inline-block; padding:.3rem .65rem; border:1px solid var(--border); border-radius:.25rem; text-decoration:none; color:var(--text); background:var(--field-bg); font-size:.85rem}
+.site-nav a:hover {background:var(--hover-bg)}
+.site-nav a[aria-current="page"] {background:var(--active-bg); border-color:var(--active-bg); color:var(--text)}
+.site-nav a:focus-visible {outline:2px solid var(--focus); outline-offset:2px}
+.overview {padding:1rem; background:var(--panel-bg); border:1px solid var(--border); border-radius:.4rem}
+.overview h1 {font-size:1.35rem; margin:0 0 .7rem}
+.overview p {color:var(--muted); margin:0}
+
+#top-form {display:flex; flex-wrap:wrap; gap:.6rem; align-items:end}
+#top-form label {display:grid; gap:.2rem} #top-form input,#top-form button {font:inherit; padding:.3rem}
+#limit {width:5rem} .quick-limits {display:flex; gap:.3rem}
+.top-workspace {display:grid; grid-template-columns:minmax(160px,10%) minmax(0,1fr); gap:1rem}
+#link-legend {list-style:none; display:flex; flex-direction:column; gap:.35rem; margin:0; padding:0}
+#link-legend li {display:flex; align-items:center; gap:.4rem; overflow-wrap:anywhere}
+#link-legend .swatch {width:.75rem; height:.75rem; border:1px solid var(--muted); flex-shrink:0}
+.table-scroll {overflow-x:auto} #ranking {border-collapse:collapse; width:100%}
+#ranking th,#ranking td {padding:.6rem; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap}
+#ranking th:first-child,#ranking td:first-child,#ranking th:nth-child(2),#ranking td:nth-child(2) {text-align:left}
+#ranking .asn-summary td {padding-top:1rem; padding-bottom:.4rem; border-bottom:0}
+#ranking .asn-graph td {padding:.25rem .6rem 1rem; border-bottom:1px solid var(--border)}
+#top-period,#top-timezone {font-size:.8rem; color:var(--muted)} #top-timezone {text-align:right; margin-top:1rem}
+@media (max-width:640px) {.top-workspace {grid-template-columns:minmax(0,1fr)}}
+
+.sparkline {display:block; width:100%; height:auto; aspect-ratio:840 / 260} .traffic-status {font-size:.8rem; color:var(--muted)}
+
+.top-workspace > section {min-width:0}
+#ranking {table-layout:fixed}
+#ranking th,#ranking td {white-space:normal; overflow-wrap:anywhere}
+#ranking th:first-child {width:10%}
+#ranking th:nth-child(2) {width:18%}
+#ranking .asn-graph a {display:block}
+@media (min-width:1100px) {#ranking {min-width:calc(840px + 1.2rem)}}
+
+.asn-metadata {overflow-wrap:anywhere; min-width:0; font-size:.85rem; color:var(--muted)}
+#asn-metadata {max-width:22rem; align-self:center}
+#ranking .asn-metadata {display:block; margin-top:.2rem}
+
+#ranking a.asn-metadata {color:var(--link)}
+#ranking a.asn-metadata:hover {color:var(--focus)}
+
+#usage-period,#usage-timezone {font-size:.8rem; color:var(--muted)}
+#usage-timezone {text-align:right; margin-top:1rem}
+.usage-section {min-width:0; margin-bottom:1.2rem; padding:.8rem; background:var(--panel-bg); border:1px solid var(--border); border-radius:.4rem}
+.usage-section h2 {font-size:1.1rem; margin:0 0 .5rem; overflow-wrap:anywhere}
+.usage-image {display:block; width:100%; height:auto; aspect-ratio:840 / 340}
+.usage-legend {display:grid; gap:.5rem}
+.usage-legend-group {display:flex; flex-wrap:wrap; gap:.4rem .8rem; align-items:center; min-width:0; font-size:.85rem}
+.usage-legend-group strong {flex:0 0 4rem}
+.usage-legend-item {display:inline-flex; align-items:center; gap:.3rem; max-width:100%; overflow-wrap:anywhere}
+.usage-dot {display:inline-block; width:.65rem; height:.65rem; flex-shrink:0; border-radius:50%}
+
+.update-note {font-size:.8rem; color:var(--muted)}
