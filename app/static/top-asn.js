@@ -1,3 +1,4 @@
+const localUrl = path => window.ASStat ? window.ASStat.url(path) : path;
 const $ = id => document.getElementById(id);
 let generation = 0;
 let controller;
@@ -60,9 +61,12 @@ $('top-form').addEventListener('submit', async event => {
     $('top-status').textContent = 'Top must be a whole number from 1 to 300'; return;
   }
   controller = new AbortController();
-  $('top-status').textContent = 'Loading…';
+  $('top-status').textContent = 'Loading traffic ranking…';
+  const requestController = controller;
+  let timedOut = false;
+  const timeout = setTimeout(() => {timedOut = true; requestController.abort();}, window.ASStat?.rankingTimeoutMs || 74000);
   try {
-    const response = await fetch(`/api/top-asn?limit=${Number(limit)}`,{cache:'no-store',signal:controller.signal});
+    const response = await fetch(localUrl(`/api/top-asn?limit=${Number(limit)}`),{cache:'no-store',signal:controller.signal});
     if (current !== generation) return;
     if (!response.ok) {
       $('top-status').textContent = response.status === 504 ? 'Traffic data request timed out. Please try again.' : 'Unable to load traffic ranking. Please try again.';
@@ -76,7 +80,7 @@ $('top-form').addEventListener('submit', async event => {
       const rank = document.createElement('td'); rank.textContent = row.rank;
       const asn = document.createElement('td');
       const link = document.createElement('a'); link.textContent = `AS${row.asn}`;
-      link.href = `/view-asn?asn=${encodeURIComponent(row.asn)}`;
+      link.href = localUrl(`/view-asn?asn=${encodeURIComponent(row.asn)}&period=1d`);
       link.className = 'asn-metadata'; asn.append(link); metadataLabels.set(row.asn, link);
       item.append(rank,asn,volumeCell(row.in),volumeCell(row.out),volumeCell(row.total));
       item.className = 'asn-summary';
@@ -89,7 +93,7 @@ $('top-form').addEventListener('submit', async event => {
       imageLink.append(image); traffic.append(imageLink,status); graphRow.append(traffic);
       $('ranking-rows').append(item,graphRow);
       observeImage({image,status,generation:current,
-        url:`/api/asn/sparkline.svg?${new URLSearchParams({asn:row.asn,start:String(data.start),end:String(data.end),tz:browserTimezone,v:"5"})}`});
+        url:localUrl(`/api/asn/sparkline.svg?${new URLSearchParams({asn:row.asn,start:String(data.start),end:String(data.end),tz:browserTimezone,v:"5"})}`)});
     }
     $('top-period').textContent = `[${new Date(data.start*1000).toLocaleString()}, ${new Date(data.end*1000).toLocaleString()})`;
     $('ranking').hidden = data.rows.length === 0;
@@ -99,13 +103,15 @@ $('top-form').addEventListener('submit', async event => {
       for (const [asn, element] of metadataLabels) element.textContent = window.AsnMetadata.label(asn, records.get(asn));
     });
   } catch (error) {
-    if (current !== generation || error.name === 'AbortError') return;
-    $('top-status').textContent = 'Unable to load traffic ranking. Please try again.';
+    if (current !== generation || (error.name === 'AbortError' && !timedOut)) return;
+    $('top-status').textContent = timedOut ? 'Traffic ranking request timed out. Please try again.' : 'Unable to load traffic ranking. Please try again.';
+  } finally {
+    clearTimeout(timeout);
   }
 });
 async function loadLegend() {
   try {
-    const response = await fetch('/api/links',{cache:'no-store'});
+    const response = await fetch(localUrl('/api/links'),{cache:'no-store'});
     if (!response.ok) throw new Error('links');
     for (const link of await response.json()) {
       const item = document.createElement('li');

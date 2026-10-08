@@ -62,15 +62,15 @@ def ranking_response(limit, start, end, top, directions):
     return {'limit':limit,'start':start,'end':end,'rows':ordered}
 
 
-def fetch_top(url, limit, now=None):
+def fetch_top(url, limit, now=None, timeout_seconds=30):
     start, end = ranking_period(now)
     instant = f'{end-1}.999'
-    top = query_vm(url, f'topk({limit}, sum by (asn) (sum_over_time(asstat_traffic_bytes[86400s])))', instant)
+    top = query_vm(url, f'topk({limit}, sum by (asn) (sum_over_time(asstat_traffic_bytes[86400s])))', instant, timeout_seconds=timeout_seconds)
     try:
         asns = [parse_asn(sample['metric']['asn']) for sample in top]
         if len(set(asns)) != len(asns) or len(asns) > limit:
             raise ValueError('duplicate or excess ranked ASN')
     except (KeyError, TypeError, ValueError) as exc:
         raise VMError('Invalid ranking response from VictoriaMetrics') from exc
-    directions = query_vm(url, detail_query(asns), instant) if asns else []
+    directions = query_vm(url, detail_query(asns), instant, timeout_seconds=timeout_seconds) if asns else []
     return ranking_response(limit,start,end,top,directions)

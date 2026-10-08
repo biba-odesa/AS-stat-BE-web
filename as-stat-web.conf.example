@@ -1,11 +1,16 @@
 [server]
+url_prefix =
+# Leave empty to serve at the URL root.
 # Defaults to loopback; use the VM internal address for manual access.
 host = 127.0.0.1
 port = 8000
 
 [victoriametrics]
-# Local transport always bypasses HTTP proxies.
-url = http://127.0.0.1:8428
+# Server-selected HTTP endpoints; transport always bypasses proxies.
+endpoint_1d = 127.0.0.1:8428
+endpoint_1w = 127.0.0.1:8429
+endpoint_1m = 127.0.0.1:8430
+endpoint_1y = 127.0.0.1:8431
 
 [links]
 # Relative paths are resolved against the web project root.
@@ -27,3 +32,13 @@ cache_ttl_seconds = 1200
 path = data/web-cache
 ttl_seconds = 1200
 max_size_bytes = 134217728
+
+[ipv]
+# Per VM query, including history discovery and every sequential block.
+vm_timeout_seconds = 30
+short_cache_ttl_seconds = 3600
+long_cache_ttl_seconds = 604800
+
+[top_asn]
+# Timeout per VM query; ranking uses two sequential instant queries.
+vm_timeout_seconds = 30

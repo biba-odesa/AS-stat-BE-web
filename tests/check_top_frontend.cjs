@@ -6,7 +6,7 @@ get('limit').value='20';
 const buttons=['20','50','300'].map(limit=>({...element(),dataset:{limit}}));
 let submissions=0;get('top-form').requestSubmit=()=>submissions++;
 const requests=[];
-const context=vm.createContext({window:{addEventListener(){},IntersectionObserver:class {observe(){} disconnect(){} unobserve(){}}},console,Date,Intl,Number,String,URLSearchParams,AbortController,
+const context=vm.createContext({window:{addEventListener(){},IntersectionObserver:class {observe(){} disconnect(){} unobserve(){}}},console,Date,Intl,Number,String,URLSearchParams,AbortController,setTimeout,clearTimeout,
  document:{getElementById:get,createElement:element,createTextNode:t=>t,querySelectorAll:()=>buttons},
  fetch:async url=>{requests.push(url);return {ok:true,json:async()=>url==='/api/links'?[{link_id:'secret',name:'Visible name',color:'#112233'}]:
  {start:120,end:86520,rows:[{rank:1,asn:'64496',in:'0',out:null,total:'0'}]}}}
@@ -19,7 +19,7 @@ vm.runInContext(fs.readFileSync('app/static/top-asn.js','utf8'),context);
  assert.equal(get('link-legend').children[0].children[1],'Visible name');
  await get('top-form').events.submit({preventDefault(){}});
  const row=get('ranking-rows').children[0];
- assert.equal(row.children[1].children[0].href,'/view-asn?asn=64496');
+ assert.equal(row.children[1].children[0].href,'/view-asn?asn=64496&period=1d');
  assert.equal(row.children[2].textContent,'0 B');
  assert.equal(row.children[2].title,'0 B');
  assert.equal(row.children[3].textContent,'No data');
@@ -27,7 +27,7 @@ vm.runInContext(fs.readFileSync('app/static/top-asn.js','utf8'),context);
  const graphRow=get('ranking-rows').children[1];
  assert.equal(graphRow.children[0].colSpan,5);
  const imageLink=graphRow.children[0].children[0],image=imageLink.children[0];
- assert.equal(imageLink.href,'/view-asn?asn=64496');
+ assert.equal(imageLink.href,'/view-asn?asn=64496&period=1d');
  assert.equal(image.width,840);assert.equal(image.height,260);
  assert.match(image.sparklineJob.url,/v=5/);
  assert.match(image.sparklineJob.url,/tz=/);

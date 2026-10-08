@@ -50,7 +50,7 @@ class LinkUsageTests(unittest.TestCase):
         self.addCleanup(patched.stop)
 
     def test_manifest_and_validation(self):
-        with patch('app.link_usage.parse_knownlinks',return_value=[LINK,Link('idle-example','Idle example','#123456')]):
+        with patch('app.link_usage.parse_knownlinks',return_value=[LINK,Link('idle-example','Idle Example','#123456')]):
             manifest = usage.manifest(SETTINGS,now=END+59)
             self.assertEqual((manifest['start'],manifest['end']),(0,86400))
             self.assertEqual(len(manifest['links']),2)

@@ -17,7 +17,7 @@ def sample(family, values, direction='in', link_id='a'):
 class SeriesTests(unittest.TestCase):
     def test_grid_gap_zero_and_family_merge(self):
         matrix = [sample('4', [[120,'0'],[240,'10']]), sample('6', [[240,'2'],[300,'3']])]
-        data = make_series_response('64496','both',120,360,[Link('a','A','#112233'),Link('idle-example','Idle example','#445566')],matrix)
+        data = make_series_response('64496','both',120,360,[Link('a','A','#112233'),Link('idle-example','Idle Example','#445566')],matrix)
         self.assertEqual(data['timestamps'], [120,180,240,300])
         self.assertEqual(data['links'][0]['in'], ['0',None,'12','3'])
         self.assertEqual(data['links'][0]['out'], [None]*4)

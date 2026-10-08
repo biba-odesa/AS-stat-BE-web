@@ -53,7 +53,7 @@ class VolumesTests(unittest.TestCase):
     def test_missing_zero_history_and_totals(self):
         vector = [{'metric': {'link_id': 'a', 'direction': 'in'}, 'value': [0, '0']},
                   {'metric': {'link_id': 'historic', 'direction': 'out'}, 'value': [0, '9007199254740993']}]
-        data = make_response('1', 'both', 120, 180, [Link('a','A','#112233'), Link('idle-example','Idle example','#445566')], vector)
+        data = make_response('1', 'both', 120, 180, [Link('a','A','#112233'), Link('idle-example','Idle Example','#445566')], vector)
         rows = {r['link_id']: r for r in data['links']}
         self.assertEqual(rows['a']['in'], '0')
         self.assertIsNone(rows['a']['out'])
@@ -91,7 +91,7 @@ class VolumesTests(unittest.TestCase):
                 make_response('1','4',120,180,[],[{'metric':{'link_id':'a','direction':'in'},'value':[0,value]}])
 
     def test_api_success_and_vm_failure(self):
-        with patch('app.main.parse_knownlinks', return_value=[Link('idle-example','Idle example','#112233')]), patch('app.main.query_vm', return_value=[]) as query:
+        with patch('app.main.parse_knownlinks', return_value=[Link('idle-example','Idle Example','#112233')]), patch('app.main.query_vm', return_value=[]) as query:
             status, data = asyncio.run(request('asn=64496&start=120&end=240'))
             self.assertEqual(status, 200)
             self.assertEqual(data['start'],120)
@@ -101,4 +101,4 @@ class VolumesTests(unittest.TestCase):
         with patch('app.main.parse_knownlinks', return_value=[]), patch('app.main.query_vm', side_effect=VMError('timeout',504)):
             status, data = asyncio.run(request('asn=1&start=120&end=180'))
             self.assertEqual(status,504)
-            self.assertEqual(data['detail'],'timeout')
+            self.assertIn('period 1d',data['detail'])

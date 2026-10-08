@@ -48,7 +48,7 @@ class LegacyTimezoneTests(unittest.TestCase):
 
     def test_link_alias_shared_svg_legend_cache_and_legacy_period(self):
         cache=SVGCache();parameters={**EXACT,'link_id':'example-link','v':'2'};parameters.pop('asn')
-        with patch('app.link_usage.cache',cache),patch('app.link_usage.parse_knownlinks',return_value=[Link('example-link','Example link','#abcdef')]),patch('app.link_usage.query_vm',return_value=[]) as instant,patch('app.link_usage.query_series_vm',return_value=[]) as minute:
+        with patch('app.link_usage.cache',cache),patch('app.link_usage.parse_knownlinks',return_value=[Link('example-link','DTEL','#abcdef')]),patch('app.link_usage.query_vm',return_value=[]) as instant,patch('app.link_usage.query_series_vm',return_value=[]) as minute:
             status,headers,body=asyncio.run(request('/api/link-usage/sparkline.svg',parameters))
             self.assertEqual(status,200);self.assertIn(b'Time (Europe/Kyiv)',body)
             status,alias_headers,_=asyncio.run(request('/api/link-usage/sparkline.svg',{**parameters,'tz':'Europe/Kyiv'}))

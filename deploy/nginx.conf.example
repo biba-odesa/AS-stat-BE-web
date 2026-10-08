@@ -3,16 +3,21 @@ proxy_cache_path /var/cache/nginx/as-stat-be-web levels=1:2
     keys_zone=as_stat_be_web_svg:16m max_size=1g inactive=40m use_temp_path=off;
 
 server {
-    # Local HTTP example only. Configure TLS and authentication/whitelist before exposure.
     listen localhost:8080;
     server_name example.net;
+    # Configure operator-managed TLS and access policy before public exposure.
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_read_timeout 60s;
+    proxy_read_timeout 90s;
 
-    location ~ ^/api/(asn|link-usage)/sparkline\.svg$ {
+    location = /asstat2 {
+        return 308 /asstat2/$is_args$args;
+    }
+    # Do not use ^~ on /asstat2/: this regex must remain eligible.
+    location ~ ^/asstat2/api/(asn|link-usage)/sparkline\.svg$ {
+        # No trailing slash: preserve /asstat2 in the upstream request URI.
         proxy_pass http://localhost:8000;
         proxy_cache as_stat_be_web_svg;
         proxy_cache_key "$scheme$host$request_uri";
@@ -22,10 +27,19 @@ server {
         proxy_cache_lock_timeout 60s;
         proxy_cache_lock_age 60s;
         add_header X-Cache-Status $upstream_cache_status always;
-        # Honor upstream Cache-Control, ETag and no-store; do not ignore these headers.
     }
-    location / {
+    # IPv may execute sequential archive blocks; JSON remains uncached.
+    location = /asstat2/api/ipv {
         proxy_pass http://localhost:8000;
         proxy_cache off;
+        proxy_read_timeout 45m;
+    }
+
+    location /asstat2/ {
+        proxy_pass http://localhost:8000;
+        proxy_cache off;
+    }
+    location / {
+        return 404;
     }
 }

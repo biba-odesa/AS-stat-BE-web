@@ -77,3 +77,6 @@ input[type="checkbox"] {accent-color:var(--link)}
 .usage-dot {display:inline-block; width:.65rem; height:.65rem; flex-shrink:0; border-radius:50%}
 
 .update-note {font-size:.8rem; color:var(--muted)}
+
+.view-periods {display:flex; gap:.3rem; flex-wrap:wrap}
+.view-periods button[aria-pressed="true"] {background:var(--border); color:var(--text); border-color:var(--link)}
