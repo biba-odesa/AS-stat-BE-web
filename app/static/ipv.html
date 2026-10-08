@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AS-Stats — IPv</title>
+<link rel="stylesheet" href="/static/common.css">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<style>
+.ipv-controls {display:flex;gap:1rem;flex-wrap:wrap;margin:1rem 0}
+.ipv-controls fieldset {display:flex;gap:.35rem;flex-wrap:wrap;border:1px solid var(--border);border-radius:.3rem}
+.ipv-controls button[aria-pressed="true"] {background:#344b62;border-color:#66c2a5;color:#d5deea}
+.ipv-image {display:block;width:100%;height:auto;max-width:1400px}
+.ipv-legend {display:flex;gap:.7rem;flex-wrap:wrap;margin:1rem 0;list-style:none;padding:0}
+.ipv-legend li {display:flex;gap:.4rem;align-items:center;overflow-wrap:anywhere}
+.ipv-dot {width:.7rem;height:.7rem;border-radius:50%;display:inline-block;flex-shrink:0}
+</style></head><body>
+<nav class="site-nav" aria-label="Main navigation">
+<a href="/">Top ASN</a><a href="/view-asn">View ASN</a><a href="/link-usage">Link Usage</a><a href="/ipv" aria-current="page">IPv</a>
+</nav>
+<main><h1>IPv</h1>
+<div class="ipv-controls">
+<fieldset><legend>Mode</legend><button type="button" data-mode="6" aria-pressed="false">IPv6</button><button type="button" data-mode="4" aria-pressed="false">IPv4</button><button type="button" data-mode="compare" aria-pressed="true">IPv4/IPv6 Compare</button></fieldset>
+<fieldset><legend>Period</legend><button type="button" data-period="1d" aria-pressed="false">1d</button><button type="button" data-period="1w" aria-pressed="true">1w</button><button type="button" data-period="1m" aria-pressed="false">1m</button><button type="button" data-period="1y" aria-pressed="false">1y</button></fieldset>
+</div>
+<p id="ipv-status" role="status">Loading traffic…</p>
+<p id="ipv-period"></p><p id="ipv-history" role="status"></p>
+<p>Observed interval averages use available samples. Missing data does not imply zero traffic or complete interval coverage.</p>
+<ul id="ipv-legend" class="ipv-legend" aria-label="Traffic legend"></ul>
+<div id="ipv-graphs"></div>
+</main><footer id="ipv-timezone"></footer>
+<script src="/static/svg-images.js?v=20261008-ipv-timeout1"></script>
+<script src="/static/ipv.js?v=20261008-ipv-timeout1"></script>
+</body></html>

@@ -39,4 +39,5 @@ verification-results/
 
 data/web-cache/
 
+# Isolated publication checkout (runtime repository history is preserved)
 .publication/

@@ -51,12 +51,12 @@ def build_query(asn, ip_version, start, end):
 
 
 @vm_request("instant")
-def query_vm(url, query, instant):
-    parameters = urlencode({'query': query, 'time': instant, 'timeout': '5s', 'nocache': '1'})
+def query_vm(url, query, instant, timeout_seconds=5):
+    parameters = urlencode({'query': query, 'time': instant, 'timeout': f'{timeout_seconds}s', 'nocache': '1'})
     # Disable environment proxies for the local VictoriaMetrics endpoint.
     opener = build_opener(ProxyHandler({}))
     try:
-        with opener.open(url + '/api/v1/query?' + parameters, timeout=7) as response:
+        with opener.open(url + '/api/v1/query?' + parameters, timeout=timeout_seconds+2) as response:
             raw = response.read(4 * 1024 * 1024 + 1)
         if len(raw) > 4 * 1024 * 1024:
             raise VMError('VictoriaMetrics response is too large')
@@ -64,6 +64,13 @@ def query_vm(url, query, instant):
     except (socket.timeout, TimeoutError) as exc:
         raise VMError('VictoriaMetrics request timed out', 504) from exc
     except HTTPError as exc:
+        # VM reports query deadlines as HTTP 422; expose a gateway timeout.
+        try:
+            error = json.loads(exc.read(8192)).get('error', '')
+        except (ValueError, TypeError, AttributeError, OSError):
+            error = ''
+        if isinstance(error, str) and 'timeout exceeded' in error.lower():
+            raise VMError('VictoriaMetrics query timed out', 504) from exc
         raise VMError(f'VictoriaMetrics returned HTTP {exc.code}') from exc
     except URLError as exc:
         status = 504 if isinstance(exc.reason, (socket.timeout, TimeoutError)) else 502

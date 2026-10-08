@@ -1,3 +1,4 @@
+const localUrl = path => window.ASStat ? window.ASStat.url(path) : path;
 
 const $ = id => document.getElementById(id);
 let rows = [];
@@ -38,14 +39,14 @@ function updateAsnLinks(asn) {
 function displayLinkName(link) {
   return knownLinkNames.get(link.link_id) ?? 'Unknown link';
 }
-const pad = n => String(n).padStart(2, '0');
-function localInput(seconds) {
-  const d = new Date(seconds * 1000);
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+let viewPeriod = '1d';
+function setViewPeriod(period) {
+  viewPeriod = period;
+  for (const value of ['1d','1w','1m','1y']) $('view-period-'+value).setAttribute('aria-pressed',String(value===period));
 }
-const B = Math.floor(Date.now()/60000)*60;
-$('start').value = localInput(B-23*3600);
-$('end').value = localInput(B);
+for (const value of ['1d','1w','1m','1y']) $('view-period-'+value).addEventListener('click',()=>{
+  setViewPeriod(value); $('form').requestSubmit();
+});
 $('timezone').textContent = `Browser timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
 function clearResult() {
   generation++;
@@ -64,7 +65,7 @@ function clearResult() {
   seriesData = null;
   for (const chart of Object.values(charts)) chart.clear();
 }
-for (const id of ['asn','family','start','end']) {
+for (const id of ['asn','family']) {
   $(id).addEventListener('input', () => {
     clearResult();
     $('status').textContent = 'Filters changed. Press SET.';
@@ -100,29 +101,27 @@ $('form').addEventListener('submit', async event => {
   clearResult();
   const requestGeneration = generation;
   controller = new AbortController();
-  const start = new Date($('start').value).getTime()/1000;
-  const end = new Date($('end').value).getTime()/1000;
-  if (!Number.isInteger(start) || !Number.isInteger(end)) {
-    $('status').textContent = 'Invalid date or time'; return;
-  }
   $('status').textContent = 'Loading…';
-  const params = new URLSearchParams({asn:$('asn').value, ip_version:$('family').value, start:String(start), end:String(end)});
+  const params = new URLSearchParams({asn:$('asn').value, ip_version:$('family').value, period:viewPeriod});
   try {
     const signal = controller.signal;
     async function get(endpoint) {
-      const response = await fetch(`/api/asn/${endpoint}?${params}`, {cache:'no-store', signal});
+      const response = await fetch(localUrl(`/api/asn/${endpoint}?${params}`), {cache:'no-store', signal});
       const payload = await response.json();
       if (!response.ok) throw userError(response.status === 422
         ? (typeof payload.detail === 'string' ? payload.detail : 'Invalid request parameters')
-        : response.status === 504 ? 'The traffic data request timed out. Please try again.'
-        : response.status === 503 ? 'Unable to load links' : 'Unable to load traffic data. Please try again.');
+        : `Unable to load traffic for period ${viewPeriod}. Please try again.`);
       return payload;
     }
-    const [data, minuteSeries, knownLinks] = await Promise.all([get('volumes'), get('series'),
-      fetch('/api/links', {cache:'no-store', signal}).then(async response => {
+    const [minuteSeries, knownLinks] = await Promise.all([get('series'),
+      fetch(localUrl('/api/links'), {cache:'no-store', signal}).then(async response => {
         if (!response.ok) throw userError('Unable to load links');
         return response.json();
       })]);
+    if (requestGeneration !== generation) return;
+    // Bind the independent volume query to the exact series window.
+    params.set('start',String(minuteSeries.start)); params.set('end',String(minuteSeries.end));
+    const data = await get('volumes');
     if (requestGeneration !== generation) return;
     knownLinkNames = new Map(knownLinks.map(link => [link.link_id, link.name]));
     seriesData = minuteSeries;
@@ -217,7 +216,7 @@ function renderCharts() {
       axisPointer:{lineStyle:{color:theme.zero}},formatter:items => {
       const timestamp = Number(items[0]?.axisValue);
       if (!Number.isFinite(timestamp)) return '';
-      const lines = [`[${new Date(timestamp*1000).toLocaleString()}, ${new Date((timestamp+60)*1000).toLocaleString()})`];
+      const lines = [`[${new Date(timestamp*1000).toLocaleString()}, ${new Date((timestamp+(seriesData.step || 60))*1000).toLocaleString()})`];
       const offset = seriesData.timestamps.indexOf(timestamp);
       const values = {in:[],out:[]};
       const missing = {in:0,out:0};
@@ -260,7 +259,11 @@ function renderCharts() {
 window.addEventListener('resize', () => {for (const chart of Object.values(charts)) chart.resize();});
 
 const requestedAsn = new URLSearchParams(window.location.search).get('asn');
-if (requestedAsn !== null) {
+const requestedPeriod = new URLSearchParams(window.location.search).get('period') || '1d';
+const validPeriod = ['1d','1w','1m','1y'].includes(requestedPeriod);
+if (validPeriod) setViewPeriod(requestedPeriod);
+else $('status').textContent = 'Invalid period: select 1d, 1w, 1m or 1y.';
+if (requestedAsn !== null && validPeriod) {
   if (/^[0-9]{1,10}$/.test(requestedAsn) && Number(requestedAsn) <= 4294967295) {
     $('asn').value = String(Number(requestedAsn));
     $('form').requestSubmit();

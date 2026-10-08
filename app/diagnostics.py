@@ -12,7 +12,7 @@ logger = logging.getLogger('uvicorn.error')
 current = ContextVar('asstat_request_diagnostics', default=None)
 lock = threading.Lock()
 counters = {}
-ENDPOINTS = {'/api/asn/sparkline.svg', '/api/link-usage/sparkline.svg',
+ENDPOINTS = {'/api/ipv', '/api/ipv/traffic.svg', '/api/asn/sparkline.svg', '/api/link-usage/sparkline.svg',
              '/api/top-asn', '/api/link-usage/link', '/api/asn/series', '/api/asn/volumes'}
 
 
@@ -63,7 +63,7 @@ class RequestDiagnosticsMiddleware:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        endpoint = scope.get('path')
+        endpoint = scope.get('path', '').removeprefix(scope.get('root_path', ''))
         if scope['type'] != 'http' or endpoint not in ENDPOINTS:
             return await self.app(scope, receive, send)
         stats = {'endpoint':endpoint, 'cache':[], 'vm_count':0, 'vm_seconds':0.0}

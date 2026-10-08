@@ -9,9 +9,9 @@ from urllib.request import getproxies
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / 'as-stat-web.conf'
-OPTIONS = {'server': {'host', 'port'}, 'victoriametrics': {'url'},
-           'links': {'knownlinks'}, 'proxy': {'http_proxy', 'https_proxy', 'no_proxy'},
-           'asn_metadata': {'http_timeout_seconds'}, 'svg': {'cache_ttl_seconds'}, 'web_cache': {'path', 'ttl_seconds', 'max_size_bytes'}}
+OPTIONS = {'server': {'host', 'port', 'url_prefix'}, 'victoriametrics': {'url', 'endpoint_1d', 'endpoint_1w', 'endpoint_1m', 'endpoint_1y'},
+           'top_asn': {'vm_timeout_seconds'}, 'links': {'knownlinks'}, 'proxy': {'http_proxy', 'https_proxy', 'no_proxy'},
+           'asn_metadata': {'http_timeout_seconds'}, 'ipv': {'short_cache_ttl_seconds', 'long_cache_ttl_seconds', 'vm_timeout_seconds'}, 'svg': {'cache_ttl_seconds'}, 'web_cache': {'path', 'ttl_seconds', 'max_size_bytes'}}
 
 
 class ConfigurationError(ValueError):
@@ -49,19 +49,42 @@ class Settings:
     web_cache_ttl: int = 1200
     web_cache_max_bytes: int = 128 * 1024 * 1024
 
+    url_prefix: str = ''
+    ipv_short_ttl: int = 3600
+    ipv_long_ttl: int = 604800
+
+    vm_endpoints: dict = field(default_factory=dict)
+    top_asn_vm_timeout: int = 30
+    ipv_vm_timeout: int = 30
+
+    @property
+    def ranking_client_timeout_ms(self):
+        # Two sequential VM queries, HTTP grace for each, then response overhead.
+        return (2 * (self.top_asn_vm_timeout + 2) + 10) * 1000
+
     @classmethod
     def from_env(cls):
         parser = read_config()
         def value(section, option, environment, default):
             return os.environ.get(environment, parser.get(section, option, fallback=default))
-        url = value('victoriametrics', 'url', 'ASSTAT_VM_URL', 'http://127.0.0.1:8428').rstrip('/')
+        from app.archive_sources import endpoint_url
+        legacy_url = value('victoriametrics', 'url', 'ASSTAT_VM_URL', 'http://127.0.0.1:8428')
         try:
-            parsed = urlsplit(url)
-            if (parsed.scheme != 'http' or parsed.hostname != '127.0.0.1' or parsed.port != 8428
-                    or parsed.path or parsed.query or parsed.fragment or parsed.username or parsed.password):
+            legacy = urlsplit(legacy_url)
+            if legacy.scheme != 'http' or legacy.path not in ('', '/') or legacy.query or legacy.fragment:
                 raise ValueError
-        except ValueError:
-            raise ConfigurationError('VictoriaMetrics URL must be http://127.0.0.1:8428') from None
+            legacy_endpoint = legacy.netloc
+            endpoint_url(legacy_endpoint)
+        except (ValueError, ConfigurationError):
+            raise ConfigurationError('Invalid VictoriaMetrics URL; use an HTTP host:port endpoint') from None
+        endpoints = {}
+        for period, port in (('1d',8428),('1w',8429),('1m',8430),('1y',8431)):
+            default = legacy_endpoint if period == '1d' else f'127.0.0.1:{port}'
+            configured = value('victoriametrics', 'endpoint_'+period, 'ASSTAT_VM_ENDPOINT_'+period.upper(), default)
+            if period == '1d' and 'ASSTAT_VM_URL' in os.environ and 'ASSTAT_VM_ENDPOINT_1D' not in os.environ:
+                configured = legacy_endpoint
+            endpoints[period] = endpoint_url(configured)
+        url = endpoints['1d']
         path = Path(value('links', 'knownlinks', 'ASSTAT_KNOWNLINKS', '/data/as-stats/conf/knownlinks'))
         if not path.is_absolute():
             path = ROOT / path
@@ -94,6 +117,24 @@ class Settings:
             if cache_ttl <= 0 or cache_size <= 0: raise ValueError
         except ValueError:
             raise ConfigurationError('Web cache TTL and size must be positive integers') from None
+        try:
+            ipv_short = int(value('ipv', 'short_cache_ttl_seconds', 'ASSTAT_IPV_SHORT_CACHE_TTL_SECONDS', '3600'))
+            ipv_long = int(value('ipv', 'long_cache_ttl_seconds', 'ASSTAT_IPV_LONG_CACHE_TTL_SECONDS', '604800'))
+            if min(ipv_short, ipv_long) <= 0: raise ValueError
+        except ValueError:
+            raise ConfigurationError('IPv cache TTLs must be positive integers') from None
+        try:
+            ranking_timeout = int(value('top_asn', 'vm_timeout_seconds', 'ASSTAT_TOP_ASN_VM_TIMEOUT_SECONDS', '30'))
+            if not 1 <= ranking_timeout <= 120: raise ValueError
+        except ValueError:
+            raise ConfigurationError('Top ASN VM timeout must be an integer from 1 to 120 seconds') from None
+        try:
+            ipv_timeout = int(value('ipv', 'vm_timeout_seconds', 'ASSTAT_IPV_VM_TIMEOUT_SECONDS', '30'))
+            if not 1 <= ipv_timeout <= 120: raise ValueError
+        except ValueError:
+            raise ConfigurationError('IPv VM timeout must be an integer from 1 to 120 seconds') from None
+        from app.url_prefix import normalize_prefix
+        prefix = normalize_prefix(value('server', 'url_prefix', 'ASSTAT_URL_PREFIX', ''))
         environment_proxies = getproxies()
         proxies = {}
         for key in ('http', 'https', 'no'):
@@ -109,4 +150,4 @@ class Settings:
                         raise ValueError
                 except ValueError:
                     raise ConfigurationError(f'{variable} must be an HTTP or HTTPS proxy URL') from None
-        return cls(url, path.resolve(), host, port, timeout, proxies, svg_ttl, cache_path, cache_ttl, cache_size)
+        return cls(url, path.resolve(), host, port, timeout, proxies, svg_ttl, cache_path, cache_ttl, cache_size, prefix, ipv_short, ipv_long, endpoints, ranking_timeout, ipv_timeout)

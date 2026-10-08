@@ -52,6 +52,6 @@ class KnownlinksTests(unittest.TestCase):
     def test_vm_configuration(self):
         with patch.dict('os.environ', {'ASSTAT_VM_URL': 'http://127.0.0.1:8428'}):
             self.assertEqual(Settings.from_env().victoriametrics_url, 'http://127.0.0.1:8428')
-        with patch.dict('os.environ', {'ASSTAT_VM_URL': 'http://192.0.2.1:8428'}):
+        with patch.dict('os.environ', {'ASSTAT_VM_URL': 'http://user:secret@192.0.2.1:8428'}):
             with self.assertRaises(ValueError):
                 Settings.from_env()

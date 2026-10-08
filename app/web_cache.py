@@ -20,7 +20,7 @@ class ResultCache:
         self.workers = threading.BoundedSemaphore(2)
         self.memory_limit = 16 * 1024 * 1024
 
-    def get(self, settings, key, factory, with_expiry=False):
+    def get(self, settings, key, factory, with_expiry=False, expiry_limit=None):
         digest = hashlib.sha256(json.dumps(key, separators=(',', ':'), ensure_ascii=True).encode()).hexdigest()
         identity = (str(settings.web_cache_path), settings.web_cache_ttl, digest)
         with self.lock:
@@ -61,7 +61,7 @@ class ResultCache:
                 with self.workers:
                     result = factory()
                 computed = self.clock()
-                entry = {'key': digest, 'computed': computed, 'expires': computed + settings.web_cache_ttl,
+                entry = {'key': digest, 'computed': computed, 'expires': min(computed + settings.web_cache_ttl, expiry_limit) if expiry_limit is not None else computed + settings.web_cache_ttl,
                          'payload': json.dumps(result, separators=(',', ':'), allow_nan=False)}
                 data = json.dumps(entry, separators=(',', ':')).encode()
                 with DISK_LOCK:

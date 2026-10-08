@@ -21,7 +21,7 @@ window.SvgImageQueue = class {
         task.finished=true;job.image.onload=null;job.image.onerror=null;
         this.active.delete(task);this.pump();
       };
-      this.active.add(task);job.status.textContent='Loading…';
+      this.active.add(task);job.status.textContent=job.loadingMessage || 'Loading…';
       job.image.onload=async () => {
         try {
           const message=job.loaded ? await job.loaded(task.abort.signal) : '';
@@ -30,7 +30,7 @@ window.SvgImageQueue = class {
           if (!task.finished && error.name !== 'AbortError') job.status.textContent='Unable to load link legend';
         } finally {task.finish();}
       };
-      job.image.onerror=() => {job.status.textContent='Image unavailable';task.finish();};
+      job.image.onerror=() => {job.status.textContent=job.errorMessage || 'Image unavailable';task.finish();};
       job.image.src=job.url;
     }
   }

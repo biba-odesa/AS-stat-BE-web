@@ -12,6 +12,7 @@ Pages:
   ASN metadata and external resource links.
 - **Link Usage** (`/link-usage`): per-link SVG graphs with fixed input/output
   top-10 ASN sets and direction-specific Others.
+- **IPv** (`/ipv`): IPv4/IPv6 traffic and comparison across four archive periods.
 
 [Original AS-Stats](https://github.com/manuelkasper/AS-Stats) is the source of
 the project idea. Its code is not described as copied or derived without
@@ -79,9 +80,13 @@ of the launch directory.
 [server]
 host = 127.0.0.1
 port = 8000
+url_prefix =
 
 [victoriametrics]
-url = http://127.0.0.1:8428
+endpoint_1d = 127.0.0.1:8428
+endpoint_1w = 127.0.0.1:8429
+endpoint_1m = 127.0.0.1:8430
+endpoint_1y = 127.0.0.1:8431
 
 [links]
 knownlinks = /etc/as-stat-be-web/knownlinks
@@ -104,13 +109,14 @@ ttl_seconds = 1200
 max_size_bytes = 134217728
 ```
 
-The current application deliberately validates the VictoriaMetrics address as
-`http://127.0.0.1:8428`: deploy it on the same host. This setting does not support
-a remote VM server. VictoriaMetrics calls always bypass HTTP proxies, even if
+Endpoints use validated host:port values without credentials, paths or query strings.
+The application adds `http://` centrally; browsers cannot choose an endpoint.
+Top ASN and Link Usage continue using endpoint_1d. VictoriaMetrics calls always bypass HTTP proxies, even if
 proxy environment variables are present. Finite timeouts apply to all queries.
 
 Environment overrides: `UVICORN_HOST`, `UVICORN_PORT`, `ASSTAT_VM_URL`,
-`ASSTAT_KNOWNLINKS`, `ASN_METADATA_HTTP_TIMEOUT_SECONDS`,
+`ASSTAT_VM_ENDPOINT_1D`, `ASSTAT_VM_ENDPOINT_1W`, `ASSTAT_VM_ENDPOINT_1M`,
+`ASSTAT_VM_ENDPOINT_1Y`, `ASSTAT_KNOWNLINKS`, `ASN_METADATA_HTTP_TIMEOUT_SECONDS`,
 `ASSTAT_SVG_CACHE_TTL_SECONDS`, `ASSTAT_WEB_CACHE_PATH`,
 `ASSTAT_WEB_CACHE_TTL_SECONDS`, `ASSTAT_WEB_CACHE_MAX_SIZE_BYTES`, and standard
 `HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`. A `HTTPS_PROXY` URL beginning with
@@ -133,7 +139,7 @@ sudo -u asstat-web .venv/bin/python -m app
 
 This supported entry point reads host/port from configuration. With loopback
 host and port 8000, open `http://localhost:8000/`,
-`http://localhost:8000/view-asn` or `http://localhost:8000/link-usage` on the host.
+`http://localhost:8000/view-asn`, `http://localhost:8000/link-usage` or `http://localhost:8000/ipv` on the host.
 To view remotely, use an operator-managed reverse proxy or SSH forwarding:
 
 ```sh
@@ -205,16 +211,22 @@ their identity internally but are displayed as `Unknown link`.
 
 The metric is `asstat_traffic_bytes{link_id,asn,direction,ip_version}`. Directions
 are `in`/`out`, IP families are `4`/`6`, and ASN is a decimal uint32 string.
-Each value represents **bytes for one complete minute**, with sampling already
-applied. Average minute speed is `bytes * 8 / 60` bit/s. Sampling is not reapplied;
+In the primary source each value represents **bytes for one complete minute**,
+with sampling already applied. Average minute speed is `bytes * 8 / 60` bit/s.
+Archive sources use the complete intervals documented in the IPv section. Sampling is not reapplied;
 `rate()` and `increase()` are not used. Missing points remain null, distinct
 from a real zero. Available IPv4/IPv6 values are summed without claiming full
 coverage. Input is drawn below zero, output above; source values stay positive.
 
-View ASN defaults to the last **23 hours of complete minutes**. End B is the
-start of the current UTC minute, A = B − 23 hours; the interval is [A,B).
-Custom intervals are minute-aligned, positive, at most seven days and cannot
-include the unfinished current minute. For Top ASN and Link Usage:
+View ASN selects 1d, 1w, 1M or 1y (internal value `1m`). The default is
+exactly 24 hours, with B aligned to the latest completed source interval and
+A = B − duration. The period is [A,B); manual date fields have been removed.
+`/view-asn?asn=64496&period=1d` automatically loads the selected ASN/period;
+64496 is a documentation ASN and real checks need an ASN in the operator's data.
+`/api/asn/series` and `/api/asn/volumes` accept the server-controlled `period`.
+The frontend binds the independent volume request to the series response's A/B.
+Legacy explicit start/end calls without a period retain their minute validation.
+For Top ASN and Link Usage:
 B = floor(now_utc / 1200) * 1200; A = B − 86400. Their 24-hour interval ends at
 an UTC 20-minute boundary and is labelled “Updated every 20 minutes”.
 
@@ -339,3 +351,157 @@ full traffic responses. No live checks run automatically. `X-ASStat-Cache`,
 `X-ASStat-VM-Queries`, `X-ASStat-VM-Seconds` and diagnostic logs expose cache
 outcomes, safe hashed keys and VM counts/timings. Real configuration, caches,
 logs and virtual environments are ignored by Git; do not publish operator data.
+
+## URL prefix deployment
+
+The built-in default is an empty `server.url_prefix`, preserving root deployment.
+The configuration example defaults to the URL root; set `/asstat2` for a prefixed deployment.
+`ASSTAT_URL_PREFIX` overrides the INI value. Prefixes normalize leading/trailing
+slashes; only safe path segments are accepted, without URLs, queries, fragments,
+percent escapes, dot segments or repeated internal slashes.
+
+```ini
+[server]
+url_prefix = /asstat2
+```
+
+Restart the web process after changing it. All pages, API, static assets,
+favicon, metadata polling, View ASN links and direct SVG URLs then live below
+`/asstat2/`. Pages receive one server-generated frontend base path. The
+application mounts its complete router at this prefix; merely setting Uvicorn
+`root_path` is not the deployment mechanism. Do not also configure Uvicorn
+`--root-path` or an nginx rewrite that strips the prefix. The application
+redirects `/asstat2` to `/asstat2/`, preserving the query string. OpenAPI, when
+available, is at `/asstat2/openapi.json`; interactive docs remain disabled.
+
+With this configuration the manual page addresses are
+`http://localhost:8000/asstat2/`, `http://localhost:8000/asstat2/view-asn` and
+`http://localhost:8000/asstat2/link-usage` and `http://localhost:8000/asstat2/ipv`. Empty-prefix deployments retain the
+root addresses given earlier. External ASN resource URLs are unaffected.
+
+The nginx example preserves the full request URI using `proxy_pass
+http://localhost:8000;` **without a trailing slash**. Install its exact redirect,
+SVG regex location and ordinary `/asstat2/` location within your operator-managed
+server. Do not mark the ordinary location `^~`, which would suppress SVG regex
+matching. HTML and JSON remain uncached by the proxy; SVG uses the separate
+20-minute cache zone, full request URI key and `proxy_cache_lock`. Existing SVG
+TTL, ETag/304 and direct image requests remain supported. Adjust only the prefix
+consistently in the INI and nginx locations if deploying at another path.
+
+## IPv traffic page
+
+`/ipv` (or `/asstat2/ipv` with the configured prefix) offers IPv6, IPv4 and
+IPv4/IPv6 Compare. Compare and 1w are selected initially. Clicking a mode or
+period explicitly loads that combination; the page does not automatically
+warm all combinations. The default Compare + 1w loads once on opening. A changed selection clears old images and ignores late
+responses. Images use direct SVG HTTP URLs and browser IANA timezone.
+
+IPv4/IPv6 family modes sum all ASN samples in VictoriaMetrics by link/direction
+and draw independent input-down/output-up area stacks in knownlinks colors.
+Compare aggregates by IP family/direction, with separate Input and Output line
+charts and fixed family colors. Legends use display names; historical unknown
+links are neutral. No individual ASN series are requested.
+
+| Period | Duration | Interval | End boundary UTC | Data/SVG TTL |
+|---|---:|---:|---|---:|
+| 1d | 24 hours | 60 seconds | current hour | 3600 seconds |
+| 1w | 7 days | 5 minutes | current hour | 3600 seconds |
+| 1m | 30 days | 30 minutes | current day | 604800 seconds |
+| 1y | 365 days | 2 hours | current day | 604800 seconds |
+
+All windows are [A,B); A=B−duration. IPv uses hourly stable boundaries for
+1d/1w and daily boundaries for 1m/1y. View ASN uses the source's completed
+interval boundary directly. No weekly rounding is used.
+
+The collector's verified archive contract uses the same metric and labels
+in every source: `asstat_traffic_bytes{link_id,asn,direction,ip_version}`.
+Each sample is the sum of already sampled bytes for [t,t+resolution), with
+UTC interval-start timestamps and epoch-aligned intervals. Complete empty
+windows generate no zero points; partial windows are not published.
+
+| Period/source | Resolution | VM retention |
+|---|---:|---:|
+| 1d / endpoint_1d | 60 seconds | operator-managed primary retention |
+| 1w / endpoint_1w | 300 seconds | 7 days |
+| 1m / endpoint_1m | 1800 seconds | 31 days |
+| 1y / endpoint_1y | 7200 seconds | 370 days |
+
+Speed queries use `sum_over_time(asstat_traffic_bytes{...}[1ms]) * 8 / resolution`,
+with `query_range(start=A,end=B−resolution,step=resolution)`. ASN aggregation
+for IPv occurs inside the selected VM, by link/direction or IP family/direction.
+View ASN volumes remain separate instant `sum_over_time(...[B−A s])` queries
+at `time=B−0.001`; graphical points never determine volumes. Missing samples
+remain null and true zero remains zero. No rate/increase, selector backfill or
+additional sampling is used. Retention is a maximum availability setting,
+not proof of accumulated history or complete coverage. No other database is
+used as fallback on a source error.
+
+```ini
+[ipv]
+short_cache_ttl_seconds = 3600
+long_cache_ttl_seconds = 604800
+```
+
+Environment overrides are `ASSTAT_IPV_SHORT_CACHE_TTL_SECONDS` and
+`ASSTAT_IPV_LONG_CACHE_TTL_SECONDS`. Numerical results and ready SVGs both use
+existing atomic, bounded `data/web-cache/` storage and survive restarts. Numerical
+keys include source, metric, resolution, period, mode, A/B and calculation version; SVG keys also include
+normalized timezone, styling/color version and knownlinks palette/name digest.
+Reads do not extend expiry. SVG expiry is capped at numerical expiry; errors
+are not retained. The shared file budget still applies. At most two heavy IPv
+calculations/renderings run concurrently; identical computations coalesce.
+
+Endpoints: `/api/ipv?mode=compare&period=1w&tz=UTC` returns the actual bounds,
+legend and image URLs for the selected combination; `/api/ipv/traffic.svg`
+accepts mode/period/start/end/tz/direction/version. `Cache-Control` matches the
+period TTL; SVG supports ETag/304 and no-store errors. The nginx example has
+not been changed for IPv: operators may later add a separate SVG cache rule.
+The Python/filesystem caches already work without reverse-proxy caching.
+
+Tests cover all modes/periods using synthetic fixtures. The optional
+`.venv/bin/python -B scripts/check_ipv.py` compares only one hour of observed
+traffic against the verified 1ms minute query, also checks restart cache reuse and
+starts a new Python process that must reuse ready numerical/SVG files without
+any VM queries. It is not run automatically.
+
+IPv computations discover the first actual raw sample with an aggregated
+`tfirst_over_time` instant query. Only intervals containing available history
+are requested, in sequential batches of at most 60 evaluation points, to bound
+VictoriaMetrics intermediate per-ASN rollup memory. The full selected axis is
+retained with nulls before the observed history; no retention cutoff is assumed.
+Concurrent identical computations still share the persistent result cache.
+
+Optional archive smoke check: `.venv/bin/python -B scripts/check_archive_web.py
+--asn 64496 --base-url http://localhost:8000/asstat2`. Replace documentation ASN
+64496 with one present in operator data. The check compares one ASN and three
+IPv intervals per source; it does not request a full all-ASN annual history.
+
+### Top ASN ranking deadlines
+
+`[top_asn] vm_timeout_seconds = 30` (environment override
+`ASSTAT_TOP_ASN_VM_TIMEOUT_SECONDS`) applies only to the two sequential ranking
+instant queries. Each query sends `timeout=30s` to VM and uses a 32-second HTTP
+client timeout. The page receives a 74-second deadline (both query budgets plus
+response overhead) from server configuration. It shows “Loading traffic ranking…”
+without automatic retries. Other traffic and ASN metadata timeouts are unchanged.
+Cache misses still coalesce while computation continues, including after a browser
+disconnect. Cache reads and TTL rules are unchanged.
+
+### IPv calculation deadlines
+
+`[ipv] vm_timeout_seconds = 30` (`ASSTAT_IPV_VM_TIMEOUT_SECONDS`) applies only
+to IPv's history discovery and every sequential range-query block. VM receives
+`timeout=30s`; the HTTP client allows 32 seconds per query. Other traffic, ranking
+and metadata deadlines are independent. Frontend budgets are supplied by the
+server: `(1 + ceil(interval_count / 60)) * 32 + 60` seconds, including discovery,
+all possible blocks and an extra minute for queueing/processing/transfer. Defaults
+are 860/1180/860/2428 seconds for 1d/1w/1m/1y. These are upper waiting budgets,
+not expected calculation times. Changing filters cancels browser waiting and
+ignores stale responses; it does not duplicate an already running computation.
+Loading displays “Loading traffic…”, with no automatic retries. Numeric/SVG
+cache keys, TTL and atomic persistence are unchanged by this timeout adjustment.
+
+Reverse-proxy timeouts must accommodate these application waiting budgets: the
+neutral nginx example uses a separate uncached IPv API location with a 45-minute
+read timeout and a 90-second general read timeout for ranking. These are deployment
+examples; installing them requires an operator action. No running proxy is changed.

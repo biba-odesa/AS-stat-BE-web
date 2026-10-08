@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 function element() {
   return {value:'', hidden:false, children:[], events:{}, style:{},
-    addEventListener(name, callback){this.events[name]=callback},
+    setAttribute(name,value){this[name]=value}, addEventListener(name, callback){this.events[name]=callback},
     append(...items){this.children.push(...items)}, replaceChildren(){this.children=[]}};
 }
 const elements = new Map();
@@ -11,7 +11,7 @@ const get = id => {if (!elements.has(id)) elements.set(id, element()); return el
 get('asn').value='64496'; get('family').value='both';
 const chartInstances = [];
 const links = [{link_id:'a',name:'Link A',color:'#112233',in:'0',out:null}];
-const series = {start:120,end:300,timestamps:[120,180,240],links:[{...links[0],in:['0',null,'10'],out:[null,null,null]}]};
+const series = {step:300,start:120,end:300,timestamps:[120,180,240],links:[{...links[0],in:['0',null,'10'],out:[null,null,null]}]};
 let rejectRequests = false;
 let requestCount = 0;
 let resizeObserver;
@@ -144,6 +144,7 @@ vm.runInContext(fs.readFileSync('app/static/app.js','utf8'),context);
   vm.runInContext('{ const requestedAsn =' + deepLinkCode + '}',context);
   assert.equal(autoSubmits,1);
   assert.equal(get('asn').value,'64496');
+  assert.doesNotMatch(html,/id="(?:start|end)"/);
   context.window.location.search = '?asn=4294967296';
   vm.runInContext('{ const requestedAsn =' + deepLinkCode + '}',context);
   assert.equal(autoSubmits,1);
@@ -154,7 +155,7 @@ vm.runInContext(fs.readFileSync('app/static/app.js','utf8'),context);
   await get('form').events.submit({preventDefault(){}});
   assert.equal(get('result').hidden,true);
   assert.equal(get('asn-links').hidden,true);
-  assert.match(get('status').textContent,/timed out/);
+  assert.match(get('status').textContent,/period 1d/);
   console.log('Frontend logic checks passed (DOM/ECharts mocks, not a real browser)');
 })().catch(error=>{console.error(error);process.exitCode=1});
 

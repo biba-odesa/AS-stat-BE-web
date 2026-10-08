@@ -70,6 +70,14 @@ class ConfigurationTests(unittest.TestCase):
         self.path.write_text('[web_cache]\nttl_seconds=0\n')
         with self.assertRaises(ConfigurationError):Settings.from_env()
 
+    def test_url_prefix_conf_and_environment(self):
+        self.path.write_text('[server]\nurl_prefix=asstat2/\n')
+        self.assertEqual(Settings.from_env().url_prefix,'/asstat2')
+        with patch.dict(os.environ,{'ASSTAT_URL_PREFIX':''}):
+            self.assertEqual(Settings.from_env().url_prefix,'')
+        self.path.write_text('[server]\nurl_prefix=https://example.net\n')
+        with self.assertRaises(ConfigurationError):Settings.from_env()
+
     def test_launcher(self):
         self.path.write_text('[server]\nhost=192.0.2.10\nport=8010\n')
         from app.__main__ import main
@@ -81,3 +89,39 @@ class ConfigurationTests(unittest.TestCase):
             self.assertEqual(main(),2)
             run.assert_not_called()
             self.assertIn('Configuration error',stderr.write.call_args_list[0].args[0])
+
+    def test_archive_endpoints_and_environment_priority(self):
+        self.path.write_text('[victoriametrics]\nendpoint_1d=localhost:8428\nendpoint_1w=localhost:8429\nendpoint_1m=localhost:8430\nendpoint_1y=localhost:8431\n')
+        settings=Settings.from_env()
+        self.assertEqual(settings.victoriametrics_url,'http://localhost:8428')
+        self.assertEqual(settings.vm_endpoints['1y'],'http://localhost:8431')
+        with patch.dict(os.environ,{'ASSTAT_VM_ENDPOINT_1W':'127.0.0.1:18429'}):
+            self.assertEqual(Settings.from_env().vm_endpoints['1w'],'http://127.0.0.1:18429')
+        with patch.dict(os.environ,{'ASSTAT_VM_URL':'http://127.0.0.1:8428'}):
+            self.assertEqual(Settings.from_env().victoriametrics_url,'http://127.0.0.1:8428')
+        self.path.write_text('[victoriametrics]\nendpoint_1y=http://user:SECRET@host:8431\n')
+        with self.assertRaises(ConfigurationError) as result:Settings.from_env()
+        self.assertNotIn('SECRET',str(result.exception))
+
+    def test_ranking_timeout_conf_and_environment(self):
+        self.path.write_text('[top_asn]\nvm_timeout_seconds=30\n')
+        settings=Settings.from_env()
+        self.assertEqual(settings.top_asn_vm_timeout,30)
+        self.assertEqual(settings.ranking_client_timeout_ms,74000)
+        self.assertEqual(settings.metadata_http_timeout,10)
+        with patch.dict(os.environ,{'ASSTAT_TOP_ASN_VM_TIMEOUT_SECONDS':'40'}):
+            self.assertEqual(Settings.from_env().ranking_client_timeout_ms,94000)
+        for value in ('0','121','nan','secret'):
+            self.path.write_text('[top_asn]\nvm_timeout_seconds='+value+'\n')
+            with self.assertRaises(ConfigurationError):Settings.from_env()
+
+    def test_ipv_vm_timeout_configuration(self):
+        self.path.write_text('[ipv]\nvm_timeout_seconds=30\n')
+        settings=Settings.from_env()
+        self.assertEqual(settings.ipv_vm_timeout,30)
+        self.assertEqual(settings.metadata_http_timeout,10)
+        with patch.dict(os.environ,{'ASSTAT_IPV_VM_TIMEOUT_SECONDS':'40'}):
+            self.assertEqual(Settings.from_env().ipv_vm_timeout,40)
+        for value in ('0','121','not-a-number'):
+            self.path.write_text('[ipv]\nvm_timeout_seconds='+value+'\n')
+            with self.assertRaises(ConfigurationError):Settings.from_env()

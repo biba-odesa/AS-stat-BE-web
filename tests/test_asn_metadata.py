@@ -36,7 +36,7 @@ class MetadataTests(unittest.TestCase):
         self.assertEqual(parse_cymru('64498','64498 | UA | ripencc | 1997-03-01 | EXAMPLE-AS'),{'name':'EXAMPLE-AS','country':'UA'})
         for value in ('bad','64499 | UA | ripe | 2020-01-01 | name','64498 | Ukraine | ripe | date | name'):
             with self.assertRaises(ValueError):parse_cymru('64498',value)
-        self.assertEqual(parse_ripe('64498',{'status':'ok','data':{'resource':'AS64498','holder':'Example network'}}),('success',{'name':'Example network','country':None}))
+        self.assertEqual(parse_ripe('64498',{'status':'ok','data':{'resource':'AS64498','holder':'EXAMPLE'}}),('success',{'name':'EXAMPLE','country':None}))
         self.assertEqual(parse_ripe('64498',{'status':'ok','data':{'resource':'64498','holder':None}}),('absent',None))
         with self.assertRaises(ValueError):parse_ripe('64498',{'status':'ok','data':{'resource':'AS1','holder':'wrong'}})
 

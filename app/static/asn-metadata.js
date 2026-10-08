@@ -1,5 +1,7 @@
 // Metadata is independent of traffic rendering; polling never starts a refresh.
 window.AsnMetadata = (() => {
+const localUrl = path => window.ASStat ? window.ASStat.url(path) : path;
+
   function label(asn, record) {
     let text = `AS${asn}`;
     if (record?.name) text += ` — ${record.name}`;
@@ -14,7 +16,7 @@ window.AsnMetadata = (() => {
     async function request(poll) {
       if (stopped || Date.now() >= deadline) return;
       try {
-        const response = await fetch(`/api/asn/metadata${poll ? '/status' : ''}`, {
+        const response = await fetch(localUrl(`/api/asn/metadata${poll ? '/status' : ''}`), {
           method:'POST', headers:{'Content-Type':'application/json'},
           body:JSON.stringify({asns}), cache:'no-store', signal:abort.signal
         });

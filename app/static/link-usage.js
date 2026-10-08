@@ -1,3 +1,4 @@
+const localUrl = path => window.ASStat ? window.ASStat.url(path) : path;
 const $ = id => document.getElementById(id);
 const imageLoader = new window.SvgImageQueue(2);
 const controllers = new Set();
@@ -11,7 +12,7 @@ function legendGroup(direction, entries) {
   group.append(title);
   for (const entry of entries) {
     const item = document.createElement(entry.asn === null ? 'span' : 'a'); item.className = 'usage-legend-item';
-    if (entry.asn !== null) item.href = `/view-asn?asn=${encodeURIComponent(entry.asn)}`;
+    if (entry.asn !== null) item.href = localUrl(`/view-asn?asn=${encodeURIComponent(entry.asn)}`);
     const dot = document.createElement('span'); dot.className = 'usage-dot'; dot.style.backgroundColor = entry.color;
     item.append(dot,document.createTextNode(entry.label)); group.append(item);
   }
@@ -28,7 +29,7 @@ function watch(job) {
 }
 async function initialize() {
   try {
-    const response = await fetch('/api/link-usage',{cache:'no-store'});
+    const response = await fetch(localUrl('/api/link-usage'),{cache:'no-store'});
     if (!response.ok) throw new Error('links');
     const data = await response.json();
     if (stopped) return;
@@ -43,10 +44,10 @@ async function initialize() {
       const legend = document.createElement('div');legend.className='usage-legend';
       section.append(title,image,status,legend);$('usage-links').append(section);
       const parameters = new URLSearchParams({link_id:link.link_id,start:String(data.start),end:String(data.end),tz:browserTimezone,v:'2'});
-      jobs.push({section,image,status,legend,url:`/api/link-usage/sparkline.svg?${parameters}`,
+      jobs.push({section,image,status,legend,url:localUrl(`/api/link-usage/sparkline.svg?${parameters}`),
         loaded:async signal => {
           // The image request has already populated the shared SVG/legend cache.
-          const response=await fetch(`/api/link-usage/link?${parameters}`,{signal});
+          const response=await fetch(localUrl(`/api/link-usage/link?${parameters}`),{signal});
           if (!response.ok) throw new Error('legend');
           const data=await response.json();
           if (signal.aborted || stopped) return '';

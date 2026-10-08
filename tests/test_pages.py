@@ -41,18 +41,18 @@ class PageTests(unittest.TestCase):
                     self.assertIn(f'<title>AS-Stats — {title}</title>',text)
                     self.assertIn('/static/common.css',text)
                     markup = PageMarkup(text)
-                    self.assertEqual([a['href'] for a in markup.links],['/','/view-asn','/link-usage'])
+                    self.assertEqual([a['href'] for a in markup.links],['/','/view-asn','/link-usage','/ipv'])
                     self.assertEqual([a['href'] for a in markup.links if a.get('aria-current')=='page'],[active])
                     if path == '/':
                         self.assertIn('Total includes traffic counted across all links.',text)
-                        self.assertEqual([s['src'] for s in markup.scripts],['/static/asn-metadata.js','/static/svg-images.js?v=20261002-2','/static/top-asn.js?v=20261002-2'])
+                        self.assertEqual([s['src'] for s in markup.scripts if 'src' in s],['/static/asn-metadata.js?v=20261005-1','/static/svg-images.js?v=20261005-1','/static/top-asn.js?v=20261008-ranking1'])
                         self.assertNotIn('/api/',text)
                     elif path == '/link-usage':
                         self.assertIn('usage-links',text)
-                        self.assertEqual([s['src'] for s in markup.scripts],['/static/svg-images.js?v=20261002-2','/static/link-usage.js?v=20261002-2'])
+                        self.assertEqual([s['src'] for s in markup.scripts if 'src' in s],['/static/svg-images.js?v=20261005-1','/static/link-usage.js?v=20261005-1'])
                         self.assertNotIn('asn-metadata.js',text)
                     else:
                         self.assertIn('chart-traffic',text)
-                        self.assertEqual([s['src'] for s in markup.scripts],['/static/vendor/echarts/echarts.min.js','/static/asn-metadata.js','/static/app.js'])
+                        self.assertEqual([s['src'] for s in markup.scripts if 'src' in s],['/static/vendor/echarts/echarts.min.js','/static/asn-metadata.js?v=20261005-1','/static/app.js?v=20261006-archives1'])
             volumes.assert_not_called()
             series.assert_not_called()
